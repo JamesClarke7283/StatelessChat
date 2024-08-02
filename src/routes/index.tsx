@@ -1,25 +1,44 @@
-import { useSignal } from "@preact/signals";
-import Counter from "../islands/Counter.tsx";
+import { Head } from "$fresh/runtime.ts";
+import { Handlers, PageProps } from "$fresh/server.ts";
+import { getCookies } from "https://deno.land/std@0.224.0/http/cookie.ts";
+import { logger } from "../logging.ts";
 
-export default function Home() {
-  const count = useSignal(3);
+interface Data {
+  username: string;
+}
+
+export const handler: Handlers<Data> = {
+  GET(req, ctx) {
+    const cookies = getCookies(req.headers);
+    const username = cookies.username;
+    if (!username) {
+      logger.info("Redirecting to username page due to missing username");
+      return new Response("", {
+        status: 303,
+        headers: { Location: "/username" },
+      });
+    }
+    logger.info(`Home page accessed by user: ${username}`);
+    return ctx.render({ username: decodeURIComponent(username) });
+  },
+};
+
+export default function Home({ data }: PageProps<Data>) {
   return (
-    <div class="px-4 py-8 mx-auto bg-[#86efac]">
-      <div class="max-w-screen-md mx-auto flex flex-col items-center justify-center">
-        <img
-          class="my-6"
-          src="/logo.svg"
-          width="128"
-          height="128"
-          alt="the Fresh logo: a sliced lemon dripping with juice"
-        />
-        <h1 class="text-4xl font-bold">Welcome to Fresh</h1>
-        <p class="my-4">
-          Try updating this message in the
-          <code class="mx-2">./routes/index.tsx</code> file, and refresh.
+    <>
+      <Head>
+        <title>StatelessChat</title>
+      </Head>
+      <div class="p-4 mx-auto max-w-screen-md">
+        <h1 class="text-4xl font-bold text-center mb-6">Welcome to StatelessChat</h1>
+        <p class="my-6 text-center">
+          Hello, {data.username}! Chat privately and securely without any signup required.
         </p>
-        <Counter count={count} />
+        <div class="flex justify-center space-x-4">
+          <a href="/create" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Create Room</a>
+          <a href="/join" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Join Room</a>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
