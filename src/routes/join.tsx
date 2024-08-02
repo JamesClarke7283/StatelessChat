@@ -10,10 +10,11 @@ interface Data {
 
 export const handler: Handlers<Data> = {
   GET(req, ctx) {
+    logger.info("GET request received for join room page");
     const cookies = getCookies(req.headers);
     const username = cookies.username;
     if (!username) {
-      logger.info("Redirecting to username page from join room page");
+      logger.info("Redirecting to username page from join room page: No username found");
       return new Response("", {
         status: 303,
         headers: { Location: "/username" },
@@ -23,11 +24,14 @@ export const handler: Handlers<Data> = {
     return ctx.render({});
   },
   async POST(req, ctx) {
+    logger.info("POST request received for join room page");
     const form = await req.formData();
     const cookies = getCookies(req.headers);
     const username = cookies.username;
     const roomId = form.get("roomId")?.toString();
     const password = form.get("password")?.toString();
+
+    logger.debug(`Join room attempt - Username: ${username}, RoomID: ${roomId}, Password provided: ${password ? 'Yes' : 'No'}`);
 
     if (!username || !roomId || !password) {
       logger.warn("Room join attempt with missing information");
@@ -35,7 +39,9 @@ export const handler: Handlers<Data> = {
     }
 
     if (db.joinRoom(roomId, password, username)) {
+      logger.info(`User ${username} successfully joined room: ${roomId}`);
       const token = await db.generateToken(username, roomId, password);
+      logger.debug(`Token generated for user ${username} in room ${roomId}`);
       const headers = new Headers();
       setCookie(headers, {
         name: "roomToken",
@@ -44,7 +50,7 @@ export const handler: Handlers<Data> = {
         sameSite: "Lax",
         maxAge: 3600, // 1 hour
       });
-      logger.info(`User ${username} joined room: ${roomId}`);
+      logger.info(`Redirecting user ${username} to room ${roomId}`);
       return new Response("", {
         status: 303,
         headers: { ...headers, Location: `/room/${roomId}` },
@@ -57,6 +63,7 @@ export const handler: Handlers<Data> = {
 };
 
 export default function JoinRoom({ data }: PageProps<Data>) {
+  logger.debug("Rendering JoinRoom component");
   return (
     <>
       <Head>

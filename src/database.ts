@@ -1,4 +1,3 @@
-// ./src/database.ts
 import { crypto } from "https://deno.land/std@0.192.0/crypto/mod.ts";
 import { logger } from "./logging.ts";
 
@@ -68,6 +67,7 @@ class Database {
     }
 
     const key = await this.deriveKey(room.passwordHash);
+    logger.debug(`Decrypting ${room.messages.length} messages for room ${roomId}`);
     return Promise.all(room.messages.map(async (msg) => ({
       username: "Anonymous", // In a real app, you'd decrypt the username too
       content: await this.decrypt(msg.encryptedContent, key, this.base64ToArrayBuffer(msg.iv)),

@@ -14,13 +14,16 @@ interface Data {
 export const handler: Handlers<Data> = {
   async GET(req, ctx) {
     const roomId = ctx.params.roomId;
+    logger.info(`GET request received for room page: ${roomId}`);
+
     const url = new URL(req.url);
     const password = url.hash.slice(1); // Remove the '#' from the start
+    logger.debug(`Password provided in URL: ${password ? 'Yes' : 'No'}`);
 
     const cookies = getCookies(req.headers);
     const username = cookies.username;
     if (!username) {
-      logger.info(`Redirecting to username page from room ${roomId}`);
+      logger.info(`Redirecting to username page from room ${roomId}: No username found`);
       return new Response("", {
         status: 303,
         headers: { Location: "/username" },
@@ -28,8 +31,10 @@ export const handler: Handlers<Data> = {
     }
 
     let token = cookies.roomToken;
+    logger.debug(`Token found in cookies: ${token ? 'Yes' : 'No'}`);
 
     if (!token && password) {
+      logger.info(`Generating new token for user ${username} in room ${roomId}`);
       token = await db.generateToken(username, roomId, password);
       const headers = new Headers();
       setCookie(headers, {
@@ -39,7 +44,7 @@ export const handler: Handlers<Data> = {
         sameSite: "Lax",
         maxAge: 3600, // 1 hour
       });
-      logger.info(`Generated new token for user ${username} in room ${roomId}`);
+      logger.debug(`New token set in cookie for user ${username} in room ${roomId}`);
       return new Response("", {
         status: 303,
         headers: { ...headers, Location: `/room/${roomId}` },
@@ -52,12 +57,13 @@ export const handler: Handlers<Data> = {
     }
 
     const messages = await db.getMessages(roomId);
-    logger.info(`User ${username} accessed room ${roomId}`);
+    logger.info(`User ${username} accessed room ${roomId}. Message count: ${messages.length}`);
     return ctx.render({ roomId, username, messages });
   },
 };
 
 export default function Room({ data }: PageProps<Data>) {
+  logger.debug(`Rendering Room component for room: ${data.roomId}`);
   return (
     <>
       <Head>

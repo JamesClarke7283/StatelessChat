@@ -12,10 +12,11 @@ interface Data {
 
 export const handler: Handlers<Data> = {
   GET(req, ctx) {
+    logger.info("GET request received for create room page");
     const cookies = getCookies(req.headers);
     const username = cookies.username;
     if (!username) {
-      logger.info("Redirecting to username page from create room page");
+      logger.info("Redirecting to username page from create room page: No username found");
       return new Response("", {
         status: 303,
         headers: { Location: "/username" },
@@ -25,10 +26,13 @@ export const handler: Handlers<Data> = {
     return ctx.render({});
   },
   async POST(req, ctx) {
+    logger.info("POST request received for create room page");
     const form = await req.formData();
     const password = form.get("password")?.toString();
     const cookies = getCookies(req.headers);
     const username = cookies.username;
+
+    logger.debug(`Create room attempt - Username: ${username}, Password provided: ${password ? 'Yes' : 'No'}`);
 
     if (!username || !password) {
       logger.warn("Room creation attempt without username or password");
@@ -36,7 +40,10 @@ export const handler: Handlers<Data> = {
     }
 
     const roomId = db.createRoom(password);
+    logger.info(`Room created: ${roomId} by user: ${username}`);
+
     const token = await db.generateToken(username, roomId, password);
+    logger.debug(`Token generated for room: ${roomId}`);
 
     const headers = new Headers();
     setCookie(headers, {
@@ -47,7 +54,7 @@ export const handler: Handlers<Data> = {
       maxAge: 3600, // 1 hour
     });
 
-    logger.info(`Room created: ${roomId} by user: ${username}`);
+    logger.info(`Redirecting user ${username} to room ${roomId}`);
     return new Response("", {
       status: 303,
       headers: { ...headers, Location: `/room/${roomId}` },
@@ -56,6 +63,7 @@ export const handler: Handlers<Data> = {
 };
 
 export default function CreateRoom({ data }: PageProps<Data>) {
+  logger.debug("Rendering CreateRoom component");
   return (
     <>
       <Head>

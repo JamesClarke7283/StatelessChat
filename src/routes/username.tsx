@@ -1,3 +1,4 @@
+// ./src/routes/username.tsx
 import { Head } from "$fresh/runtime.ts";
 import { Handlers, PageProps } from "$fresh/server.ts";
 import { setCookie } from "https://deno.land/std@0.224.0/http/cookie.ts";
@@ -9,17 +10,20 @@ interface Data {
 
 export const handler: Handlers<Data> = {
   GET(_, ctx) {
-    logger.info("Accessing username page");
+    logger.info("GET request received for username page");
     return ctx.render({});
   },
-  async POST(req, ctx) {
+  async POST(req) {
+    logger.info("POST request received for username page");
     const form = await req.formData();
     const username = form.get("username")?.toString();
 
     if (!username) {
       logger.warn("Username submission attempt without a username");
-      return ctx.render({ error: "Username is required." });
+      return new Response("Username is required", { status: 400 });
     }
+
+    logger.debug(`Submitted username: ${username}`);
 
     const headers = new Headers();
     setCookie(headers, {
@@ -31,14 +35,19 @@ export const handler: Handlers<Data> = {
     });
 
     logger.info(`Username set: ${username}`);
-    return new Response("", {
+    logger.debug("Redirecting to home page after setting username");
+    
+    headers.set("Location", "/");
+
+    return new Response(null, {
       status: 303,
-      headers: { ...headers, Location: "/" },
+      headers: headers,
     });
   },
 };
 
 export default function Username({ data }: PageProps<Data>) {
+  logger.debug("Rendering Username component");
   return (
     <>
       <Head>
